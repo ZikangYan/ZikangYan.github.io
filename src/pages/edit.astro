@@ -1,0 +1,29 @@
+---
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import PostPage from "../components/PostPage.astro";
+import Pagination from "../components/control/Pagination.astro";
+import { getSortedPosts } from "../utils/content-utils";
+import { PAGE_SIZE } from "../constants/constants";
+
+const allBlogPosts = await getSortedPosts();
+const totalPages = Math.ceil(allBlogPosts.length / PAGE_SIZE);
+
+const page = {
+	data: allBlogPosts.slice(0, PAGE_SIZE),
+	currentPage: 1,
+	lastPage: totalPages,
+	size: PAGE_SIZE,
+	total: allBlogPosts.length,
+	url: {
+		current: "/edit/",
+		next: totalPages > 1 ? "/edit/2" : undefined,
+		prev: undefined,
+	}
+};
+
+const len = page.data.length;
+---
+
+<MainGridLayout title="Edit" description="Edit">
+    <PostPage page={page}></PostPage>
+</MainGridLayout>

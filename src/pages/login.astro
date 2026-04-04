@@ -1,0 +1,98 @@
+---
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import I18nKey from "../i18n/i18nKey";
+import { i18n } from "../i18n/translation";
+import { url } from "../utils/url-utils";
+---
+
+<MainGridLayout title={i18n(I18nKey.login)}>
+	<div class="flex w-full rounded-[var(--radius-large)] overflow-hidden relative min-h-32">
+		<div class="card-base z-10 px-9 py-6 relative w-full">
+			<div class="flex items-center justify-center min-h-[400px]">
+				<div class="text-center w-full max-w-sm">
+					<h1 class="text-3xl font-bold mb-4 text-[var(--primary)]">{i18n(I18nKey.login)}</h1>
+					<p class="text-black/50 dark:text-white/50 mb-8">
+						Sign in to unlock the upload entry in the navbar.
+					</p>
+					<form class="space-y-4" id="login-form">
+						<div>
+							<input
+								id="login-username"
+								type="text"
+								placeholder="Username"
+								class="w-full px-4 py-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 outline-none focus:border-[var(--primary)] transition"
+							/>
+						</div>
+						<div>
+							<input
+								id="login-password"
+								type="password"
+								placeholder="Password"
+								class="w-full px-4 py-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 outline-none focus:border-[var(--primary)] transition"
+							/>
+						</div>
+						<button
+							type="submit"
+							class="w-full bg-[var(--primary)] text-white font-bold py-2 rounded-lg hover:opacity-90 transition active:scale-95"
+						>
+							{i18n(I18nKey.login)}
+						</button>
+					</form>
+					<p id="login-message" class="mt-4 text-sm text-black/50 dark:text-white/50"></p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	<script is:inline define:vars={{ editUrl: url("/edit/") }}>
+	const loginForm = document.getElementById("login-form");
+	const loginMessage = document.getElementById("login-message");
+	const validUsername = "yanzikang";
+	const validPassword = "yzk123456";
+
+	if (loginForm instanceof HTMLFormElement) {
+		loginForm.addEventListener("submit", (event) => {
+			event.preventDefault();
+
+			const username = document.getElementById("login-username");
+			const password = document.getElementById("login-password");
+
+			if (!(username instanceof HTMLInputElement) || !(password instanceof HTMLInputElement)) {
+				return;
+			}
+
+			if (!username.value.trim() || !password.value.trim()) {
+				if (loginMessage) {
+					loginMessage.textContent = "Please enter both username and password.";
+				}
+				return;
+			}
+
+			if (username.value.trim() !== validUsername || password.value !== validPassword) {
+				sessionStorage.removeItem("isLoggedIn");
+				sessionStorage.removeItem("loginUser");
+				if (loginMessage) {
+					loginMessage.textContent = "Invalid username or password.";
+				}
+				return;
+			}
+
+			sessionStorage.setItem("isLoggedIn", "true");
+			sessionStorage.setItem("loginUser", username.value.trim());
+			window.dispatchEvent(new Event("authchange"));
+
+			if (loginMessage) {
+				loginMessage.textContent = "Login successful. Redirecting...";
+			}
+
+			setTimeout(() => {
+				if (window.swup) {
+					window.swup.navigate(editUrl);
+				} else {
+					window.location.href = editUrl;
+				}
+			}, 300);
+		});
+	}
+	</script>
+</MainGridLayout>

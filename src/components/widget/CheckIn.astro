@@ -1,0 +1,64 @@
+---
+import { formatDateToYYYYMMDD } from "../../utils/date-utils";
+import { getPostHeatmap } from "../../utils/post-heatmap";
+import WidgetLayout from "./WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+
+const totalCells = 7 * 14;
+const heatmap = getPostHeatmap();
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayStr = formatDateToYYYYMMDD(today);
+const todayCount = heatmap[todayStr] ?? 0;
+const isCheckedIn = todayCount > 0;
+
+let streak = 0;
+const cursor = new Date(today);
+while ((heatmap[formatDateToYYYYMMDD(cursor)] ?? 0) > 0) {
+	streak += 1;
+	cursor.setDate(cursor.getDate() - 1);
+}
+
+let activeDays = 0;
+for (let i = 0; i < totalCells; i++) {
+	const date = new Date(today);
+	date.setDate(today.getDate() - i);
+	if ((heatmap[formatDateToYYYYMMDD(date)] ?? 0) > 0) {
+		activeDays += 1;
+	}
+}
+---
+
+<WidgetLayout name="打卡" id="check-in" class={className} style={style}>
+	<div class="flex flex-col gap-3 pb-1">
+		<div class:list={[
+			"rounded-2xl px-4 py-3 text-center font-bold",
+			isCheckedIn
+				? "bg-[var(--primary)]/12 text-[var(--primary)]"
+				: "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300",
+		]}>
+			{isCheckedIn ? "今日已打卡" : "今日待打卡"}
+		</div>
+		<div class="grid grid-cols-2 gap-3 text-sm">
+			<div class="rounded-2xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800">
+				<div class="text-xs text-neutral-500 dark:text-neutral-400">连续天数</div>
+				<div class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">{streak}</div>
+			</div>
+			<div class="rounded-2xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800">
+				<div class="text-xs text-neutral-500 dark:text-neutral-400">近98天</div>
+				<div class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">{activeDays}</div>
+			</div>
+		</div>
+		<div class="text-center text-xs text-neutral-500 dark:text-neutral-400">
+			{todayStr}，今日贡献 {todayCount}
+		</div>
+	</div>
+</WidgetLayout>

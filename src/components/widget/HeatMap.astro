@@ -1,0 +1,73 @@
+---
+import { formatDateToYYYYMMDD } from "../../utils/date-utils";
+import { getPostHeatmap } from "../../utils/post-heatmap";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const className = Astro.props.class;
+const style = Astro.props.style;
+
+const heatmap = getPostHeatmap();
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayLabel = formatDateToYYYYMMDD(today);
+const totalCells = 7 * 14;
+const weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long" });
+
+const startDate = new Date(today);
+startDate.setDate(startDate.getDate() - (totalCells - 1));
+
+const weeks: { date: string; count: number; inRange: boolean; tooltip: string }[][] = [];
+let current = new Date(startDate);
+
+while (current <= today) {
+	const week: { date: string; count: number; inRange: boolean; tooltip: string }[] = [];
+
+	for (let d = 0; d < 7; d++) {
+		const dateStr = formatDateToYYYYMMDD(current);
+		const count = heatmap[dateStr] ?? 0;
+		const tooltip = `${dateStr}, ${weekdayFormatter.format(current)}, ${count} contribution${count === 1 ? "" : "s"}`;
+		week.push({
+			date: dateStr,
+			count,
+			inRange: true,
+			tooltip,
+		});
+		current.setDate(current.getDate() + 1);
+	}
+
+	weeks.push(week);
+}
+---
+
+<div class:list={["pb-4 card-base", className]} style={style}>
+	<div class="px-4 pt-4">
+		<div class="mb-3 text-base font-bold text-center text-neutral-700 dark:text-neutral-300">{todayLabel}</div>
+		<div
+			class="grid gap-[3px] w-full"
+			style={`grid-template-columns: repeat(${weeks.length}, minmax(0, 1fr));`}
+		>
+			{weeks.map((week) => (
+				<div class="grid gap-[3px]">
+					{week.map((day) => (
+						<div
+							title={day.inRange ? day.tooltip : ""}
+							class:list={[
+								"w-full aspect-square rounded-[2px] transition duration-150 ease-out hover:scale-110 hover:z-10",
+								!day.inRange && "opacity-0 pointer-events-none",
+								day.inRange && day.count === 0 && "bg-neutral-200 dark:bg-neutral-700",
+								day.inRange && day.count === 1 && "bg-[oklch(0.85_0.1_var(--hue))] dark:bg-[oklch(0.45_0.12_var(--hue))]",
+								day.inRange && day.count === 2 && "bg-[oklch(0.72_0.15_var(--hue))] dark:bg-[oklch(0.55_0.16_var(--hue))]",
+								day.inRange && day.count >= 3 && "bg-[oklch(0.58_0.18_var(--hue))] dark:bg-[oklch(0.68_0.2_var(--hue))]",
+							]}
+						/>
+					))}
+				</div>
+			))}
+		</div>
+	</div>
+</div>

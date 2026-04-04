@@ -502,6 +502,19 @@ window.onresize = () => {
 	document.documentElement.style.setProperty('--banner-height-extend', `${offset}px`);
 }
 
+// Keyboard shortcuts
+window.addEventListener('keydown', (event) => {
+    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        const loginUrl = url('/login/');
+        if (window.swup) {
+            window.swup.navigate(loginUrl);
+        } else {
+            window.location.href = loginUrl;
+        }
+    }
+});
+
 </script>
 
 <script>
