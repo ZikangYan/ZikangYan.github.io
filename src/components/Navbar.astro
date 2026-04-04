@@ -102,7 +102,6 @@ function syncNavbarUI() {
     const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" && sessionStorage.getItem("loginUser") === "yanzikang";
     const currentPath = window.location.pathname.replace(/\/$/, "");
     const normalizedEditPath = editUrl.replace(/\/$/, "");
-    const normalizedLoginPath = loginUrl.replace(/\/$/, "");
     
     const adminTools = document.getElementById("navbar-admin-tools");
     const homeLink = document.getElementById("nav-home-link");

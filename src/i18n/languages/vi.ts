@@ -4,27 +4,27 @@ import type { Translation } from "../translation";
 export const vi: Translation = {
 	[Key.home]: "Trang chủ",
 	[Key.about]: "Giới thiệu",
-	[Key.archive]: "Kho bài",
+	[Key.archive]: "Lưu trữ",
 	[Key.search]: "Tìm kiếm",
 
 	[Key.tags]: "Thẻ",
 	[Key.categories]: "Danh mục",
-	[Key.recentPosts]: "Bài viết mới nhất",
+	[Key.recentPosts]: "Bài viết gần đây",
 
 	[Key.comments]: "Bình luận",
 
-	[Key.untitled]: "Không tiêu đề",
+	[Key.untitled]: "Chưa có tiêu đề",
 	[Key.uncategorized]: "Chưa phân loại",
-	[Key.noTags]: "Chưa có thẻ",
+	[Key.noTags]: "Không có thẻ",
 
 	[Key.wordCount]: "từ",
 	[Key.wordsCount]: "từ",
-	[Key.minuteCount]: "phút đọc",
-	[Key.minutesCount]: "phút đọc",
+	[Key.minuteCount]: "phút",
+	[Key.minutesCount]: "phút",
 	[Key.postCount]: "bài viết",
 	[Key.postsCount]: "bài viết",
 
-	[Key.themeColor]: "Màu giao diện",
+	[Key.themeColor]: "Màu chủ đề",
 
 	[Key.lightMode]: "Sáng",
 	[Key.darkMode]: "Tối",
@@ -34,5 +34,6 @@ export const vi: Translation = {
 
 	[Key.author]: "Tác giả",
 	[Key.publishedAt]: "Đăng vào lúc",
-	[Key.license]: "Giấy phép bản quyền",
+	[Key.license]: "Giấy phép",
+	[Key.login]: "Đăng nhập",
 };
