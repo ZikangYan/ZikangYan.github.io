@@ -1,8 +1,8 @@
 ---
-import MainGridLayout from "../layouts/MainGridLayout.astro";
 import PostPage from "../components/PostPage.astro";
-import { getSortedPosts } from "../utils/content-utils";
 import { PAGE_SIZE } from "../constants/constants";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import { getSortedPosts } from "../utils/content-utils";
 
 const allBlogPosts = await getSortedPosts();
 const totalPages = Math.ceil(allBlogPosts.length / PAGE_SIZE);
@@ -17,7 +17,7 @@ const page = {
 		current: "/edit/",
 		next: totalPages > 1 ? "/edit/2" : undefined,
 		prev: undefined,
-	}
+	},
 };
 ---
 
