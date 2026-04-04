@@ -21,11 +21,21 @@ const weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long" });
 const startDate = new Date(today);
 startDate.setDate(startDate.getDate() - (totalCells - 1));
 
-const weeks: { date: string; count: number; inRange: boolean; tooltip: string }[][] = [];
+const weeks: {
+	date: string;
+	count: number;
+	inRange: boolean;
+	tooltip: string;
+}[][] = [];
 let current = new Date(startDate);
 
 while (current <= today) {
-	const week: { date: string; count: number; inRange: boolean; tooltip: string }[] = [];
+	const week: {
+		date: string;
+		count: number;
+		inRange: boolean;
+		tooltip: string;
+	}[] = [];
 
 	for (let d = 0; d < 7; d++) {
 		const dateStr = formatDateToYYYYMMDD(current);
