@@ -11,7 +11,7 @@ export function getPostHeatmap(months = 3): Record<string, number> {
 		const since = formatDateToYYYYMMDD(sinceDate);
 
 		const output = execSync(
-			`git log --since="${since}" --diff-filter=A --name-only --format="DATE:%as" -- "src/content/posts/*.md" "src/content/posts/*.mdx" "src/content/posts/**/*.md" "src/content/posts/**/*.mdx"`,
+			`git log --since="${since}" --diff-filter=A --name-only --format="DATE:%as" --date=local -- "src/content/posts/*.md" "src/content/posts/*.mdx" "src/content/posts/**/*.md" "src/content/posts/**/*.mdx"`,
 			{ encoding: "utf-8", cwd: process.cwd() },
 		);
 

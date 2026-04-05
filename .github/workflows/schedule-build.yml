@@ -1,0 +1,16 @@
+name: Scheduled Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 0点触发 (北京时间 8点)
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Deploy Workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy.yml --ref main

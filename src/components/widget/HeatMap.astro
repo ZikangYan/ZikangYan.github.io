@@ -18,8 +18,14 @@ const todayLabel = formatDateToYYYYMMDD(today);
 const totalCells = 7 * 14;
 const weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long" });
 
-const startDate = new Date(today);
-startDate.setDate(startDate.getDate() - (totalCells - 1));
+// Calculate how many days back we need to go to start on a Sunday
+// to keep the grid aligned properly.
+const startOfThisWeek = new Date(today);
+startOfThisWeek.setDate(today.getDate() - today.getDay());
+
+const weeksCount = 14;
+const startDate = new Date(startOfThisWeek);
+startDate.setDate(startDate.getDate() - (weeksCount - 1) * 7);
 
 const weeks: {
 	date: string;
@@ -29,7 +35,7 @@ const weeks: {
 }[][] = [];
 let current = new Date(startDate);
 
-while (current <= today) {
+for (let w = 0; w < weeksCount; w++) {
 	const week: {
 		date: string;
 		count: number;
@@ -44,7 +50,7 @@ while (current <= today) {
 		week.push({
 			date: dateStr,
 			count,
-			inRange: true,
+			inRange: current <= today,
 			tooltip,
 		});
 		current.setDate(current.getDate() + 1);
