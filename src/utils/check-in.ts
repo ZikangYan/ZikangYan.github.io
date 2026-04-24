@@ -43,7 +43,11 @@ export type DailyOverview = {
 	tasksTotal: number;
 	tasksCompleted: number;
 	nextReminder: ReminderItem | null;
-	recentActivity: { date: string; checkedIn: boolean; completionRate: number }[];
+	recentActivity: {
+		date: string;
+		checkedIn: boolean;
+		completionRate: number;
+	}[];
 };
 
 export const CHECK_IN_STORAGE_KEY = "daily-execution-panel";
@@ -88,7 +92,8 @@ export function loadCheckInState(storage?: Storage | null): CheckInState {
 
 		const parsed = JSON.parse(raw) as Partial<CheckInState>;
 		return {
-			plans: parsed.plans && typeof parsed.plans === "object" ? parsed.plans : {},
+			plans:
+				parsed.plans && typeof parsed.plans === "object" ? parsed.plans : {},
 			reminders: Array.isArray(parsed.reminders) ? parsed.reminders : [],
 		};
 	} catch {
@@ -96,14 +101,20 @@ export function loadCheckInState(storage?: Storage | null): CheckInState {
 	}
 }
 
-export function saveCheckInState(state: CheckInState, storage?: Storage | null) {
+export function saveCheckInState(
+	state: CheckInState,
+	storage?: Storage | null,
+) {
 	if (!storage) {
 		return;
 	}
 	storage.setItem(CHECK_IN_STORAGE_KEY, JSON.stringify(state));
 }
 
-export function getPlanForDate(state: CheckInState, date = todayDateString()): DailyPlan {
+export function getPlanForDate(
+	state: CheckInState,
+	date = todayDateString(),
+): DailyPlan {
 	return state.plans[date] || createEmptyPlan(date);
 }
 
@@ -129,7 +140,11 @@ export function markCheckedIn(plan: DailyPlan): DailyPlan {
 	};
 }
 
-export function updatePlanText(plan: DailyPlan, key: "note" | "review", value: string): DailyPlan {
+export function updatePlanText(
+	plan: DailyPlan,
+	key: "note" | "review",
+	value: string,
+): DailyPlan {
 	return {
 		...plan,
 		[key]: value,
@@ -177,7 +192,11 @@ export function removeTask(plan: DailyPlan, taskId: string): DailyPlan {
 	};
 }
 
-export function setTaskReminder(plan: DailyPlan, taskId: string, reminderTime?: string): DailyPlan {
+export function setTaskReminder(
+	plan: DailyPlan,
+	taskId: string,
+	reminderTime?: string,
+): DailyPlan {
 	return {
 		...plan,
 		tasks: plan.tasks.map((task) =>
@@ -191,7 +210,12 @@ export function setTaskReminder(plan: DailyPlan, taskId: string, reminderTime?: 
 	};
 }
 
-export function createReminder(type: ReminderType, label: string, time: string, targetId?: string): ReminderItem {
+export function createReminder(
+	type: ReminderType,
+	label: string,
+	time: string,
+	targetId?: string,
+): ReminderItem {
 	return {
 		id: createId("reminder"),
 		type,
@@ -202,17 +226,25 @@ export function createReminder(type: ReminderType, label: string, time: string, 
 	};
 }
 
-export function upsertReminder(state: CheckInState, reminder: ReminderItem): CheckInState {
+export function upsertReminder(
+	state: CheckInState,
+	reminder: ReminderItem,
+): CheckInState {
 	const existing = state.reminders.some((item) => item.id === reminder.id);
 	return {
 		...state,
 		reminders: existing
-			? state.reminders.map((item) => (item.id === reminder.id ? reminder : item))
+			? state.reminders.map((item) =>
+					item.id === reminder.id ? reminder : item,
+				)
 			: [...state.reminders, reminder],
 	};
 }
 
-export function toggleReminder(state: CheckInState, reminderId: string): CheckInState {
+export function toggleReminder(
+	state: CheckInState,
+	reminderId: string,
+): CheckInState {
 	return {
 		...state,
 		reminders: state.reminders.map((reminder) =>
@@ -226,7 +258,10 @@ export function toggleReminder(state: CheckInState, reminderId: string): CheckIn
 	};
 }
 
-export function removeReminder(state: CheckInState, reminderId: string): CheckInState {
+export function removeReminder(
+	state: CheckInState,
+	reminderId: string,
+): CheckInState {
 	return {
 		...state,
 		reminders: state.reminders.filter((reminder) => reminder.id !== reminderId),
@@ -261,7 +296,9 @@ function calculateMonthlyCheckInCount(state: CheckInState, date: string) {
 }
 
 function getNextReminder(reminders: ReminderItem[]) {
-	const enabledReminders = reminders.filter((item) => item.enabled).sort((a, b) => a.time.localeCompare(b.time));
+	const enabledReminders = reminders
+		.filter((item) => item.enabled)
+		.sort((a, b) => a.time.localeCompare(b.time));
 	return enabledReminders[0] || null;
 }
 
@@ -282,7 +319,10 @@ function buildRecentActivity(state: CheckInState, date: string, days = 30) {
 	});
 }
 
-export function buildDailyOverview(state: CheckInState, date = todayDateString()): DailyOverview {
+export function buildDailyOverview(
+	state: CheckInState,
+	date = todayDateString(),
+): DailyOverview {
 	const plan = getPlanForDate(state, date);
 	const tasksCompleted = plan.tasks.filter((task) => task.completed).length;
 
@@ -305,6 +345,14 @@ export function getPendingAndCompletedTasks(plan: DailyPlan) {
 	};
 }
 
-export function shouldTriggerReminder(reminder: ReminderItem, currentDate: string, currentTime: string) {
-	return reminder.enabled && reminder.time === currentTime && reminder.lastTriggeredOn !== currentDate;
+export function shouldTriggerReminder(
+	reminder: ReminderItem,
+	currentDate: string,
+	currentTime: string,
+) {
+	return (
+		reminder.enabled &&
+		reminder.time === currentTime &&
+		reminder.lastTriggeredOn !== currentDate
+	);
 }

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: zikangyan-blog-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: CORS_ORIGIN
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
+      - key: ADMIN_SESSION_TTL_MS
+        value: "28800000"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO_OWNER
+        value: ZikangYan
+      - key: GITHUB_REPO_NAME
+        value: ZikangYan.github.io
+      - key: GITHUB_REPO_BRANCH
+        value: main

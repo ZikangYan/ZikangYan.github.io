@@ -1,6 +1,8 @@
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
-const configuredBaseUrl = trimTrailingSlash(import.meta.env.PUBLIC_API_BASE_URL || "");
+const configuredBaseUrl = trimTrailingSlash(
+	import.meta.env.PUBLIC_API_BASE_URL || "",
+);
 
 export function getApiBaseUrl() {
 	return configuredBaseUrl;
