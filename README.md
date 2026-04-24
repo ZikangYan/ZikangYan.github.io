@@ -49,6 +49,15 @@ A static blog template built with [Astro](https://astro.build).
 4. Run `pnpm new-post <filename>` to create a new post and edit it in `src/content/posts/`.
 5. Deploy your blog to Vercel, Netlify, GitHub Pages, etc. following [the guides](https://docs.astro.build/en/guides/deploy/). You need to edit the site configuration in `astro.config.mjs` before deployment.
 
+## External Backend Deployment
+
+If you deploy the frontend on GitHub Pages and the admin backend on Render, configure:
+
+- GitHub repository variable: `PUBLIC_API_BASE_URL`
+- Example value: `https://zikangyan-blog-backend.onrender.com`
+
+This repository's GitHub Pages workflow reads `vars.PUBLIC_API_BASE_URL` during build, so `/login/`, `/edit/`, and `/check-in/` can call the external backend API after deployment.
+
 ## 📝 Frontmatter of Posts
 
 ```yaml
