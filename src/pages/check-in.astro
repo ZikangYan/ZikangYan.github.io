@@ -1,0 +1,739 @@
+---
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import { apiUrl, hasApiBaseUrl } from "@utils/api-client";
+import { url } from "@utils/url-utils";
+---
+
+<MainGridLayout title="今日执行面板" description="打卡、计划与提醒">
+	<section class="flex flex-col gap-6">
+		<div class="card-base overflow-hidden rounded-[2rem]">
+			<div class="relative isolate p-6 md:p-8">
+				<div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_36%),radial-gradient(circle_at_right,rgba(249,115,22,0.14),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(249,250,251,0.72))] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_30%),radial-gradient(circle_at_right,rgba(249,115,22,0.18),transparent_25%),linear-gradient(135deg,rgba(17,24,39,0.95),rgba(15,23,42,0.86))]"></div>
+				<div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+					<div class="max-w-2xl">
+						<p class="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--primary)]">今日执行面板</p>
+						<h1 class="mt-3 text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 md:text-4xl">把今天看清楚，做下去，收得住。</h1>
+						<p id="checkin-hero-message" class="mt-3 max-w-xl text-sm leading-7 text-neutral-600 dark:text-neutral-300">
+							正在加载今天的状态...
+						</p>
+					</div>
+					<div class="grid gap-3 sm:grid-cols-3">
+						<div class="rounded-2xl bg-white/70 px-5 py-4 backdrop-blur dark:bg-white/5">
+							<div class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">连续打卡</div>
+							<div id="overview-streak" class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">0</div>
+						</div>
+						<div class="rounded-2xl bg-white/70 px-5 py-4 backdrop-blur dark:bg-white/5">
+							<div class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">今日计划</div>
+							<div id="overview-tasks" class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">0/0</div>
+						</div>
+						<div class="rounded-2xl bg-white/70 px-5 py-4 backdrop-blur dark:bg-white/5">
+							<div class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">下一个提醒</div>
+							<div id="overview-reminder" class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">--:--</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<section class="card-base rounded-[2rem] p-6 md:p-7">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-neutral-400">计划</p>
+					<h2 class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">今日计划</h2>
+				</div>
+				<div class="flex w-full gap-3 sm:w-auto">
+					<input id="task-input" type="text" class="w-full rounded-2xl border border-black/10 bg-neutral-50/70 px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)] dark:border-white/10 dark:bg-white/5 sm:min-w-[20rem]" placeholder="添加今天要做的事" />
+					<button id="add-task-button" type="button" class="rounded-2xl bg-[var(--primary)] px-4 py-3 text-sm font-bold text-white transition hover:opacity-90 active:scale-[0.98]">
+						添加
+					</button>
+				</div>
+			</div>
+
+			<div class="mt-6 grid gap-5 xl:grid-cols-[1fr_18rem]">
+				<div class="rounded-[1.75rem] bg-neutral-50/80 p-5 dark:bg-white/5">
+					<div class="flex items-center justify-between">
+						<h3 class="text-sm font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">待完成</h3>
+						<span id="pending-count" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-500 shadow-sm dark:bg-neutral-900 dark:text-neutral-300">0</span>
+					</div>
+					<div id="pending-task-list" class="mt-4 flex flex-col gap-3"></div>
+				</div>
+				<div class="rounded-[1.75rem] border border-black/10 p-5 dark:border-white/10">
+					<button id="completed-toggle" type="button" class="flex w-full items-center justify-between text-left">
+						<div>
+							<div class="text-sm font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">已完成</div>
+							<div id="completed-count" class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">0</div>
+						</div>
+						<span id="completed-toggle-icon" class="text-sm font-semibold text-neutral-500 dark:text-neutral-400">收起</span>
+					</button>
+					<div id="completed-task-list" class="mt-4 flex flex-col gap-3"></div>
+				</div>
+			</div>
+		</section>
+
+		<div class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+			<div class="flex flex-col gap-6">
+				<section class="card-base rounded-[2rem] p-6 md:p-7">
+					<div class="flex items-start justify-between gap-4">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-neutral-400">打卡</p>
+							<h2 class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">今日打卡</h2>
+						</div>
+						<div id="checkin-status-pill" class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300">
+							今日待打卡
+						</div>
+					</div>
+					<p class="mt-4 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
+						先完成今天的打卡，再把剩余计划一项项推进。状态、连续天数和热力格都会立即更新。
+					</p>
+					<div class="mt-5 flex flex-wrap items-center gap-3">
+						<button id="checkin-button" type="button" class="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 active:scale-[0.98]">
+							立即打卡
+						</button>
+						<div class="rounded-2xl border border-black/10 px-4 py-3 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-300">
+							<span class="font-semibold text-neutral-800 dark:text-neutral-100">本月：</span>
+							<span id="checkin-month-count">0 天</span>
+						</div>
+					</div>
+					<label class="mt-6 block">
+						<span class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">今日一句话</span>
+						<textarea id="checkin-note" rows="3" class="mt-3 w-full rounded-2xl border border-black/10 bg-neutral-50/70 px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)] dark:border-white/10 dark:bg-white/5" placeholder="给今天留一句话。"></textarea>
+					</label>
+					<div class="mt-6">
+						<div class="mb-3 flex items-center justify-between">
+							<span class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">最近 30 天</span>
+							<span id="checkin-grid-caption" class="text-xs text-neutral-500 dark:text-neutral-400">0 天活跃</span>
+						</div>
+						<div id="checkin-grid" class="grid grid-cols-6 gap-2 sm:grid-cols-10"></div>
+					</div>
+				</section>
+
+				<section class="card-base rounded-[2rem] p-6 md:p-7">
+					<div class="flex items-start justify-between gap-4">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-neutral-400">提醒</p>
+							<h2 class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">提醒设置</h2>
+						</div>
+						<button id="request-notification-permission" type="button" class="rounded-full border border-black/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-600 dark:border-white/10 dark:text-neutral-300">
+							开启通知
+						</button>
+					</div>
+					<p id="notification-status" class="mt-4 text-sm text-neutral-600 dark:text-neutral-300">
+						浏览器通知授权后会弹出提醒；未授权时，提醒只会显示在页面内。
+					</p>
+					<div class="mt-5 flex flex-col gap-3">
+						<div class="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<div>
+									<div class="font-semibold text-neutral-900 dark:text-neutral-50">每日打卡提醒</div>
+									<div class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">每天一个固定时间，提醒你收住今天。</div>
+								</div>
+								<label class="inline-flex items-center gap-3 text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+									<input id="checkin-reminder-enabled" type="checkbox" class="h-4 w-4 rounded border-black/20 text-[var(--primary)] focus:ring-[var(--primary)]" />
+									启用
+								</label>
+							</div>
+							<div class="mt-4 flex flex-wrap items-center gap-3">
+								<input id="checkin-reminder-time" type="time" class="rounded-xl border border-black/10 bg-transparent px-4 py-2 text-sm outline-none focus:border-[var(--primary)] dark:border-white/10" />
+								<button id="save-checkin-reminder" type="button" class="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+									保存提醒
+								</button>
+							</div>
+						</div>
+						<div class="rounded-2xl border border-dashed border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+							每条计划都可以单独设置提醒时间，最近的启用提醒会显示在页面顶部。
+						</div>
+					</div>
+				</section>
+			</div>
+			<div class="flex flex-col gap-6">
+				<section class="card-base rounded-[2rem] p-6 md:p-7">
+					<div class="flex items-start justify-between gap-4">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-neutral-400">回顾</p>
+							<h2 class="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-50">今日回顾</h2>
+						</div>
+						<div class="rounded-full bg-neutral-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300">
+							自动保存
+						</div>
+					</div>
+					<label class="mt-5 block">
+						<span class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-neutral-400">今天完成了什么</span>
+						<textarea id="daily-review" rows="6" class="mt-3 w-full rounded-2xl border border-black/10 bg-neutral-50/70 px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)] dark:border-white/10 dark:bg-white/5" placeholder="记录今天推进了什么，还有什么留到明天。"></textarea>
+					</label>
+				</section>
+			</div>
+		</div>
+
+	</section>
+</MainGridLayout>
+
+<script is:inline define:vars={{ loginUrl: url("/login/"), adminSessionUrl: apiUrl("/api/admin/session"), adminEnabled: hasApiBaseUrl() }}>
+const STORAGE_KEY = "daily-execution-panel";
+const CHECKIN_REMINDER_ID = "daily-checkin-reminder";
+
+const heroMessage = document.getElementById("checkin-hero-message");
+const streakValue = document.getElementById("overview-streak");
+const tasksValue = document.getElementById("overview-tasks");
+const reminderValue = document.getElementById("overview-reminder");
+const statusPill = document.getElementById("checkin-status-pill");
+const checkinButton = document.getElementById("checkin-button");
+const monthCount = document.getElementById("checkin-month-count");
+const noteInput = document.getElementById("checkin-note");
+const reviewInput = document.getElementById("daily-review");
+const gridCaption = document.getElementById("checkin-grid-caption");
+const grid = document.getElementById("checkin-grid");
+const taskInput = document.getElementById("task-input");
+const addTaskButton = document.getElementById("add-task-button");
+const pendingCount = document.getElementById("pending-count");
+const pendingTaskList = document.getElementById("pending-task-list");
+const completedCount = document.getElementById("completed-count");
+const completedTaskList = document.getElementById("completed-task-list");
+const completedToggle = document.getElementById("completed-toggle");
+const completedToggleIcon = document.getElementById("completed-toggle-icon");
+const notificationStatus = document.getElementById("notification-status");
+const requestNotificationPermissionButton = document.getElementById("request-notification-permission");
+const checkinReminderEnabled = document.getElementById("checkin-reminder-enabled");
+const checkinReminderTime = document.getElementById("checkin-reminder-time");
+const saveCheckinReminderButton = document.getElementById("save-checkin-reminder");
+
+let state = loadState();
+let completedExpanded = true;
+let reminderTimer = null;
+
+function formatDateToYYYYMMDD(date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function todayKey() {
+	return formatDateToYYYYMMDD(new Date());
+}
+
+function createId(prefix) {
+	if (window.crypto && "randomUUID" in window.crypto) {
+		return `${prefix}-${window.crypto.randomUUID()}`;
+	}
+	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function emptyPlan(date = todayKey()) {
+	return {
+		date,
+		checkedIn: false,
+		note: "",
+		review: "",
+		tasks: [],
+	};
+}
+
+function loadState() {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) {
+			return { plans: {}, reminders: [] };
+		}
+		const parsed = JSON.parse(raw);
+		return {
+			plans: parsed.plans && typeof parsed.plans === "object" ? parsed.plans : {},
+			reminders: Array.isArray(parsed.reminders) ? parsed.reminders : [],
+		};
+	} catch {
+		return { plans: {}, reminders: [] };
+	}
+}
+
+function saveState() {
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+	window.dispatchEvent(new Event("storage"));
+}
+
+function currentPlan() {
+	return state.plans[todayKey()] || emptyPlan();
+}
+
+function updateCurrentPlan(plan) {
+	state = {
+		...state,
+		plans: {
+			...state.plans,
+			[plan.date]: plan,
+		},
+	};
+	saveState();
+	render();
+}
+
+function calcStreak() {
+	let streak = 0;
+	const cursor = new Date(`${todayKey()}T00:00:00`);
+	while (true) {
+		const key = formatDateToYYYYMMDD(cursor);
+		if (!state.plans[key]?.checkedIn) break;
+		streak += 1;
+		cursor.setDate(cursor.getDate() - 1);
+	}
+	return streak;
+}
+
+function calcMonthlyCount() {
+	const now = new Date(`${todayKey()}T00:00:00`);
+	const year = now.getFullYear();
+	const month = now.getMonth();
+	return Object.values(state.plans).filter((plan) => {
+		if (!plan.checkedIn) return false;
+		const date = new Date(`${plan.date}T00:00:00`);
+		return date.getFullYear() === year && date.getMonth() === month;
+	}).length;
+}
+
+function recentActivity(days = 30) {
+	const today = new Date(`${todayKey()}T00:00:00`);
+	return Array.from({ length: days }, (_, index) => {
+		const date = new Date(today);
+		date.setDate(today.getDate() - (days - index - 1));
+		const key = formatDateToYYYYMMDD(date);
+		const plan = state.plans[key] || emptyPlan(key);
+		const total = plan.tasks.length;
+		const completed = plan.tasks.filter((task) => task.completed).length;
+		return {
+			date: key,
+			checkedIn: plan.checkedIn,
+			completionRate: total ? completed / total : 0,
+		};
+	});
+}
+
+function syncNotificationStatus() {
+	if (!notificationStatus) return;
+	if (!("Notification" in window)) {
+		notificationStatus.textContent = "当前浏览器不支持桌面通知，提醒只会保留在页面内。";
+		return;
+	}
+	if (Notification.permission === "granted") {
+		notificationStatus.textContent = "桌面通知已开启。";
+		return;
+	}
+	if (Notification.permission === "denied") {
+		notificationStatus.textContent = "通知权限被拒绝，提醒只会保留在页面内。";
+		return;
+	}
+	notificationStatus.textContent = "可以开启浏览器通知，开启后会收到弹窗提醒。";
+}
+
+function ensureCheckinReminder() {
+	const existing = state.reminders.find((item) => item.id === CHECKIN_REMINDER_ID);
+	if (existing) return existing;
+	const reminder = {
+		id: CHECKIN_REMINDER_ID,
+		type: "checkin",
+		label: "每日打卡",
+		time: "21:00",
+		enabled: false,
+	};
+	state = {
+		...state,
+		reminders: [...state.reminders, reminder],
+	};
+	saveState();
+	return reminder;
+}
+
+function upsertReminder(reminder) {
+	const exists = state.reminders.some((item) => item.id === reminder.id);
+	state = {
+		...state,
+		reminders: exists
+			? state.reminders.map((item) => (item.id === reminder.id ? reminder : item))
+			: [...state.reminders, reminder],
+	};
+	saveState();
+	render();
+}
+
+function removeReminder(reminderId) {
+	state = {
+		...state,
+		reminders: state.reminders.filter((item) => item.id !== reminderId),
+	};
+	saveState();
+	render();
+}
+
+function escapeHtml(text) {
+	return text.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[char]));
+}
+
+function renderGrid(items) {
+	if (!grid) return;
+	const activeDays = items.filter((item) => item.checkedIn).length;
+	if (gridCaption) {
+		gridCaption.textContent = `${activeDays} 天活跃`;
+	}
+	grid.innerHTML = items
+		.map((item) => {
+			const opacity = item.checkedIn ? Math.max(0.26, item.completionRate || 0.36) : 0.08;
+			const background = item.checkedIn
+				? `background: color-mix(in srgb, var(--primary) ${Math.round(opacity * 100)}%, white);`
+				: "background: color-mix(in srgb, var(--primary) 8%, transparent);";
+			return `<div title="${item.date}" class="h-9 rounded-xl border border-black/5 dark:border-white/5" style="${background}"></div>`;
+		})
+		.join("");
+}
+
+function taskReminderControl(task) {
+	return `
+		<label class="inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-1 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+			<span>提醒</span>
+			<input type="time" value="${task.reminderTime || ""}" data-action="set-reminder" data-task-id="${task.id}" class="bg-transparent outline-none" />
+		</label>
+	`;
+}
+
+function renderTasks(plan) {
+	const pending = plan.tasks.filter((task) => !task.completed);
+	const completed = plan.tasks.filter((task) => task.completed);
+
+	if (pendingCount) pendingCount.textContent = String(pending.length);
+	if (completedCount) completedCount.textContent = String(completed.length);
+	if (completedToggleIcon) completedToggleIcon.textContent = completedExpanded ? "收起" : "展开";
+
+	if (pendingTaskList) {
+		pendingTaskList.innerHTML = pending.length
+			? pending
+					.map(
+						(task) => `
+							<div class="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white/90 p-4 dark:border-white/10 dark:bg-neutral-950/50">
+								<div class="flex items-start gap-3">
+									<button type="button" data-action="toggle-task" data-task-id="${task.id}" class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-black/15 text-transparent transition hover:border-[var(--primary)] dark:border-white/15">&#10003;</button>
+									<div class="min-w-0 flex-1">
+										<div class="text-sm font-semibold text-neutral-900 dark:text-neutral-50">${escapeHtml(task.text)}</div>
+										<div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">创建于 ${new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+									</div>
+									<button type="button" data-action="delete-task" data-task-id="${task.id}" class="rounded-full px-2 py-1 text-xs font-semibold text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-white/5 dark:hover:text-neutral-200">删除</button>
+								</div>
+								<div class="flex flex-wrap items-center gap-2 pl-9">
+									${taskReminderControl(task)}
+								</div>
+							</div>
+						`,
+					)
+					.join("")
+			: `<div class="rounded-2xl border border-dashed border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">还没有待完成的计划。</div>`;
+	}
+
+	if (completedTaskList) {
+		completedTaskList.classList.toggle("hidden", !completedExpanded);
+		completedTaskList.innerHTML = completed.length
+			? completed
+					.map(
+						(task) => `
+							<div class="rounded-2xl border border-black/10 bg-neutral-50/80 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+								<div class="flex items-start gap-3">
+									<button type="button" data-action="toggle-task" data-task-id="${task.id}" class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-sm text-white">&#10003;</button>
+									<div class="min-w-0 flex-1">
+										<div class="font-semibold text-neutral-500 line-through dark:text-neutral-400">${escapeHtml(task.text)}</div>
+										<div class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">完成于 ${task.completedAt ? new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</div>
+									</div>
+								</div>
+							</div>
+						`,
+					)
+					.join("")
+			: `<div class="rounded-2xl border border-dashed border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">还没有已完成项目。</div>`;
+	}
+}
+
+function render() {
+	const plan = currentPlan();
+	const tasksCompleted = plan.tasks.filter((task) => task.completed).length;
+	const reminder = ensureCheckinReminder();
+	const nextReminder = state.reminders.filter((item) => item.enabled).sort((a, b) => a.time.localeCompare(b.time))[0] || null;
+
+	if (heroMessage) {
+		heroMessage.textContent = plan.checkedIn
+			? "今天已经完成打卡，接下来把剩余计划一项项做完。"
+			: "先完成今日打卡，再开始处理今天的计划。";
+	}
+	if (streakValue) streakValue.textContent = String(calcStreak());
+	if (tasksValue) tasksValue.textContent = `${tasksCompleted}/${plan.tasks.length}`;
+	if (reminderValue) reminderValue.textContent = nextReminder?.time || "--:--";
+
+	if (statusPill) {
+		statusPill.textContent = plan.checkedIn ? "今日已打卡" : "今日待打卡";
+		statusPill.className = plan.checkedIn
+			? "rounded-full bg-[var(--primary)]/12 px-4 py-2 text-sm font-semibold text-[var(--primary)]"
+			: "rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300";
+	}
+
+	if (checkinButton instanceof HTMLButtonElement) {
+		checkinButton.disabled = plan.checkedIn;
+		checkinButton.textContent = plan.checkedIn ? "今日已打卡" : "立即打卡";
+		checkinButton.classList.toggle("opacity-60", plan.checkedIn);
+		checkinButton.classList.toggle("cursor-not-allowed", plan.checkedIn);
+	}
+
+	if (monthCount) {
+		monthCount.textContent = `${calcMonthlyCount()} 天`;
+	}
+
+	if (noteInput instanceof HTMLTextAreaElement && noteInput.value !== plan.note) {
+		noteInput.value = plan.note || "";
+	}
+	if (reviewInput instanceof HTMLTextAreaElement && reviewInput.value !== plan.review) {
+		reviewInput.value = plan.review || "";
+	}
+
+	renderGrid(recentActivity());
+	renderTasks(plan);
+
+	if (checkinReminderEnabled instanceof HTMLInputElement) {
+		checkinReminderEnabled.checked = reminder.enabled;
+	}
+	if (checkinReminderTime instanceof HTMLInputElement) {
+		checkinReminderTime.value = reminder.time;
+	}
+
+	syncNotificationStatus();
+}
+
+function maybeTriggerReminders() {
+	const now = new Date();
+	const currentDate = formatDateToYYYYMMDD(now);
+	const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+	let updated = false;
+	state = {
+		...state,
+		reminders: state.reminders.map((reminder) => {
+			if (!reminder.enabled || reminder.time !== currentTime || reminder.lastTriggeredOn === currentDate) {
+				return reminder;
+			}
+
+			const body = reminder.type === "checkin" ? "该收住今天了，记得完成打卡。" : `该处理「${reminder.label}」了。`;
+			if ("Notification" in window && Notification.permission === "granted") {
+				new Notification(reminder.label, { body });
+			} else if (notificationStatus) {
+				notificationStatus.textContent = `${reminder.label}：${body}`;
+			}
+
+			updated = true;
+			return {
+				...reminder,
+				lastTriggeredOn: currentDate,
+			};
+		}),
+	};
+
+	if (updated) {
+		saveState();
+		render();
+	}
+}
+
+async function ensureAuthenticated() {
+	if (!adminEnabled) {
+		return;
+	}
+	try {
+		const response = await fetch(adminSessionUrl, { credentials: "include" });
+		const payload = await response.json();
+		if (payload.authenticated !== true) {
+			window.location.href = loginUrl;
+		}
+	} catch {
+		window.location.href = loginUrl;
+	}
+}
+
+if (checkinButton) {
+	checkinButton.addEventListener("click", () => {
+		const plan = currentPlan();
+		if (plan.checkedIn) return;
+		updateCurrentPlan({
+			...plan,
+			checkedIn: true,
+			checkedInAt: new Date().toISOString(),
+		});
+	});
+}
+
+if (noteInput instanceof HTMLTextAreaElement) {
+	noteInput.addEventListener("input", () => {
+		updateCurrentPlan({
+			...currentPlan(),
+			note: noteInput.value,
+		});
+	});
+}
+
+if (reviewInput instanceof HTMLTextAreaElement) {
+	reviewInput.addEventListener("input", () => {
+		updateCurrentPlan({
+			...currentPlan(),
+			review: reviewInput.value,
+		});
+	});
+}
+
+function submitTask() {
+	if (!(taskInput instanceof HTMLInputElement)) return;
+	const value = taskInput.value.trim();
+	if (!value) return;
+	const plan = currentPlan();
+	updateCurrentPlan({
+		...plan,
+		tasks: [
+			...plan.tasks,
+			{
+				id: createId("task"),
+				text: value,
+				completed: false,
+				createdAt: new Date().toISOString(),
+			},
+		],
+	});
+	taskInput.value = "";
+}
+
+if (addTaskButton) {
+	addTaskButton.addEventListener("click", submitTask);
+}
+
+if (taskInput instanceof HTMLInputElement) {
+	taskInput.addEventListener("keydown", (event) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			submitTask();
+		}
+	});
+}
+
+document.addEventListener("click", (event) => {
+	const target = event.target;
+	if (!(target instanceof HTMLElement)) return;
+
+	const actionTarget = target.closest("[data-action]");
+	if (!(actionTarget instanceof HTMLElement)) return;
+
+	const action = actionTarget.dataset.action;
+	const taskId = actionTarget.dataset.taskId;
+	if (!action || !taskId) return;
+
+	const plan = currentPlan();
+	if (action === "toggle-task") {
+		updateCurrentPlan({
+			...plan,
+			tasks: plan.tasks.map((task) =>
+				task.id === taskId
+					? {
+							...task,
+							completed: !task.completed,
+							completedAt: !task.completed ? new Date().toISOString() : undefined,
+						}
+					: task,
+			),
+		});
+	}
+
+	if (action === "delete-task") {
+		updateCurrentPlan({
+			...plan,
+			tasks: plan.tasks.filter((task) => task.id !== taskId),
+		});
+		removeReminder(`task-reminder-${taskId}`);
+	}
+});
+
+document.addEventListener("change", (event) => {
+	const target = event.target;
+	if (!(target instanceof HTMLInputElement)) return;
+	if (target.dataset.action !== "set-reminder") return;
+
+	const taskId = target.dataset.taskId;
+	if (!taskId) return;
+
+	const plan = currentPlan();
+	const task = plan.tasks.find((item) => item.id === taskId);
+	if (!task) return;
+
+	updateCurrentPlan({
+		...plan,
+		tasks: plan.tasks.map((item) =>
+			item.id === taskId
+				? {
+						...item,
+						reminderTime: target.value || undefined,
+					}
+				: item,
+		),
+	});
+
+	if (target.value) {
+		upsertReminder({
+			id: `task-reminder-${taskId}`,
+			type: "task",
+			label: task.text,
+			time: target.value,
+			enabled: true,
+			targetId: taskId,
+		});
+	} else {
+		removeReminder(`task-reminder-${taskId}`);
+	}
+});
+
+if (completedToggle) {
+	completedToggle.addEventListener("click", () => {
+		completedExpanded = !completedExpanded;
+		render();
+	});
+}
+
+if (requestNotificationPermissionButton) {
+	requestNotificationPermissionButton.addEventListener("click", async () => {
+		if (!("Notification" in window)) {
+			syncNotificationStatus();
+			return;
+		}
+		await Notification.requestPermission();
+		syncNotificationStatus();
+	});
+}
+
+if (saveCheckinReminderButton) {
+	saveCheckinReminderButton.addEventListener("click", () => {
+		const reminder = ensureCheckinReminder();
+		upsertReminder({
+			...reminder,
+			enabled: checkinReminderEnabled instanceof HTMLInputElement ? checkinReminderEnabled.checked : reminder.enabled,
+			time: checkinReminderTime instanceof HTMLInputElement && checkinReminderTime.value ? checkinReminderTime.value : reminder.time,
+		});
+	});
+}
+
+if (checkinReminderEnabled instanceof HTMLInputElement) {
+	checkinReminderEnabled.addEventListener("change", () => {
+		const reminder = ensureCheckinReminder();
+		upsertReminder({
+			...reminder,
+			enabled: checkinReminderEnabled.checked,
+		});
+	});
+}
+
+window.addEventListener("storage", () => {
+	state = loadState();
+	render();
+});
+
+ensureAuthenticated().then(() => {
+	render();
+	maybeTriggerReminders();
+	if (reminderTimer) {
+		clearInterval(reminderTimer);
+	}
+	reminderTimer = window.setInterval(maybeTriggerReminders, 30 * 1000);
+});
+</script>

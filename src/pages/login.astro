@@ -2,7 +2,8 @@
 import I18nKey from "../i18n/i18nKey";
 import { i18n } from "../i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import { url } from "../utils/url-utils";
+import { apiUrl, hasApiBaseUrl } from "@utils/api-client";
+import { url } from "@utils/url-utils";
 ---
 
 <MainGridLayout title={i18n(I18nKey.login)}>
@@ -12,7 +13,7 @@ import { url } from "../utils/url-utils";
 				<div class="text-center w-full max-w-sm">
 					<h1 class="text-3xl font-bold mb-4 text-[var(--primary)]">{i18n(I18nKey.login)}</h1>
 					<p class="text-black/50 dark:text-white/50 mb-8">
-						Sign in to unlock the upload entry in the navbar.
+						Sign in to access the Markdown draft workflow.
 					</p>
 					<form class="space-y-4" id="login-form">
 						<div>
@@ -39,20 +40,48 @@ import { url } from "../utils/url-utils";
 						</button>
 					</form>
 					<p id="login-message" class="mt-4 text-sm text-black/50 dark:text-white/50"></p>
-					</div>
 				</div>
 			</div>
 		</div>
+	</div>
 
-	<script is:inline define:vars={{ editUrl: url("/edit/") }}>
+	<script is:inline define:vars={{ editUrl: url("/edit/"), adminLoginUrl: apiUrl("/api/admin/login"), adminSessionUrl: apiUrl("/api/admin/session"), adminEnabled: hasApiBaseUrl() }}>
 	const loginForm = document.getElementById("login-form");
 	const loginMessage = document.getElementById("login-message");
-	const validUsername = "yanzikang";
-	const validPassword = "yzk123456";
+
+	async function redirectIfAuthenticated() {
+		if (!adminEnabled) {
+			if (loginMessage) {
+				loginMessage.textContent = "PUBLIC_API_BASE_URL is not configured. Admin features are disabled.";
+			}
+			return;
+		}
+
+		try {
+			const response = await fetch(adminSessionUrl, { credentials: "include" });
+			const payload = await response.json();
+			if (payload.authenticated === true) {
+				if (window.swup) {
+					window.swup.navigate(editUrl);
+				} else {
+					window.location.href = editUrl;
+				}
+			}
+		} catch (_error) {
+			// Leave the form visible when the backend is unavailable.
+		}
+	}
 
 	if (loginForm instanceof HTMLFormElement) {
-		loginForm.addEventListener("submit", (event) => {
+		loginForm.addEventListener("submit", async (event) => {
 			event.preventDefault();
+
+			if (!adminEnabled) {
+				if (loginMessage) {
+					loginMessage.textContent = "PUBLIC_API_BASE_URL is not configured. Admin features are disabled.";
+				}
+				return;
+			}
 
 			const username = document.getElementById("login-username");
 			const password = document.getElementById("login-password");
@@ -68,19 +97,31 @@ import { url } from "../utils/url-utils";
 				return;
 			}
 
-			if (username.value.trim() !== validUsername || password.value !== validPassword) {
-				sessionStorage.removeItem("isLoggedIn");
-				sessionStorage.removeItem("loginUser");
+			if (loginMessage) {
+				loginMessage.textContent = "Signing in...";
+			}
+
+			const response = await fetch(adminLoginUrl, {
+				method: "POST",
+				credentials: "include",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					username: username.value.trim(),
+					password: password.value,
+				}),
+			});
+			const payload = await response.json();
+
+			if (!response.ok) {
 				if (loginMessage) {
-					loginMessage.textContent = "Invalid username or password.";
+					loginMessage.textContent = payload.message || "Login failed.";
 				}
 				return;
 			}
 
-			sessionStorage.setItem("isLoggedIn", "true");
-			sessionStorage.setItem("loginUser", username.value.trim());
 			window.dispatchEvent(new Event("authchange"));
-
 			if (loginMessage) {
 				loginMessage.textContent = "Login successful. Redirecting...";
 			}
@@ -91,8 +132,10 @@ import { url } from "../utils/url-utils";
 				} else {
 					window.location.href = editUrl;
 				}
-			}, 300);
+			}, 200);
 		});
 	}
+
+	redirectIfAuthenticated();
 	</script>
 </MainGridLayout>

@@ -1,6 +1,4 @@
 ---
-import { formatDateToYYYYMMDD } from "../../utils/date-utils";
-import { getPostHeatmap } from "../../utils/post-heatmap";
 import WidgetLayout from "./WidgetLayout.astro";
 
 interface Props {
@@ -10,55 +8,86 @@ interface Props {
 
 const className = Astro.props.class;
 const style = Astro.props.style;
-
-const totalCells = 7 * 14;
-const heatmap = getPostHeatmap();
-
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const todayStr = formatDateToYYYYMMDD(today);
-const todayCount = heatmap[todayStr] ?? 0;
-const isCheckedIn = todayCount > 0;
-
-let streak = 0;
-const cursor = new Date(today);
-while ((heatmap[formatDateToYYYYMMDD(cursor)] ?? 0) > 0) {
-	streak += 1;
-	cursor.setDate(cursor.getDate() - 1);
-}
-
-let activeDays = 0;
-for (let i = 0; i < totalCells; i++) {
-	const date = new Date(today);
-	date.setDate(today.getDate() - i);
-	if ((heatmap[formatDateToYYYYMMDD(date)] ?? 0) > 0) {
-		activeDays += 1;
-	}
-}
 ---
 
 <WidgetLayout name="打卡" id="check-in" class={className} style={style}>
-	<div class="flex flex-col gap-3 pb-1">
-		<div class:list={[
-			"rounded-2xl px-4 py-3 text-center font-bold",
-			isCheckedIn
-				? "bg-[var(--primary)]/12 text-[var(--primary)]"
-				: "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300",
-		]}>
-			{isCheckedIn ? "今日已打卡" : "今日待打卡"}
+	<div class="flex flex-col gap-4 pb-1">
+		<div id="checkin-widget-status" class="rounded-2xl bg-neutral-100 px-4 py-3 text-center font-bold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300">
+			今日待打卡
 		</div>
 		<div class="grid grid-cols-2 gap-3 text-sm">
 			<div class="rounded-2xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800">
 				<div class="text-xs text-neutral-500 dark:text-neutral-400">连续天数</div>
-				<div class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">{streak}</div>
+				<div id="checkin-widget-streak" class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">0</div>
 			</div>
 			<div class="rounded-2xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800">
-				<div class="text-xs text-neutral-500 dark:text-neutral-400">近98天</div>
-				<div class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">{activeDays}</div>
+				<div class="text-xs text-neutral-500 dark:text-neutral-400">今日计划</div>
+				<div id="checkin-widget-tasks" class="mt-1 text-lg font-bold text-neutral-800 dark:text-neutral-100">0/0</div>
 			</div>
 		</div>
-		<div class="text-center text-xs text-neutral-500 dark:text-neutral-400">
-			{todayStr}，今日贡献 {todayCount}
+		<div class="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+			<div class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400">Next Reminder</div>
+			<div id="checkin-widget-reminder" class="mt-2 text-xl font-bold text-neutral-900 dark:text-neutral-50">--:--</div>
 		</div>
+		<a href="/check-in/" class="rounded-2xl bg-[var(--primary)] px-4 py-3 text-center text-sm font-bold text-white transition hover:opacity-90">
+			进入今日面板
+		</a>
 	</div>
 </WidgetLayout>
+
+<script is:inline>
+const widgetStorageKey = "daily-execution-panel";
+
+function widgetDateKey(date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function loadWidgetState() {
+	try {
+		return JSON.parse(localStorage.getItem(widgetStorageKey) || "{\"plans\":{},\"reminders\":[]}");
+	} catch {
+		return { plans: {}, reminders: [] };
+	}
+}
+
+function calcWidgetStreak(plans, dateKey) {
+	let streak = 0;
+	const cursor = new Date(`${dateKey}T00:00:00`);
+	while (true) {
+		const key = widgetDateKey(cursor);
+		if (!plans[key]?.checkedIn) break;
+		streak += 1;
+		cursor.setDate(cursor.getDate() - 1);
+	}
+	return streak;
+}
+
+function renderWidget() {
+	const state = loadWidgetState();
+	const today = widgetDateKey(new Date());
+	const todayPlan = state.plans?.[today] || { tasks: [], checkedIn: false };
+	const completed = (todayPlan.tasks || []).filter((task) => task.completed).length;
+	const nextReminder = (state.reminders || []).filter((item) => item.enabled).sort((a, b) => a.time.localeCompare(b.time))[0];
+
+	const status = document.getElementById("checkin-widget-status");
+	const streak = document.getElementById("checkin-widget-streak");
+	const tasks = document.getElementById("checkin-widget-tasks");
+	const reminder = document.getElementById("checkin-widget-reminder");
+
+	if (status) {
+		status.textContent = todayPlan.checkedIn ? "今日已打卡" : "今日待打卡";
+		status.className = todayPlan.checkedIn
+			? "rounded-2xl bg-[var(--primary)]/12 px-4 py-3 text-center font-bold text-[var(--primary)]"
+			: "rounded-2xl bg-neutral-100 px-4 py-3 text-center font-bold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300";
+	}
+	if (streak) streak.textContent = String(calcWidgetStreak(state.plans || {}, today));
+	if (tasks) tasks.textContent = `${completed}/${(todayPlan.tasks || []).length}`;
+	if (reminder) reminder.textContent = nextReminder?.time || "--:--";
+}
+
+renderWidget();
+window.addEventListener("storage", renderWidget);
+</script>

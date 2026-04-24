@@ -1,26 +1,313 @@
 ---
-import PostPage from "../components/PostPage.astro";
-import { PAGE_SIZE } from "../constants/constants";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import { getSortedPosts } from "../utils/content-utils";
-
-const allBlogPosts = await getSortedPosts();
-const totalPages = Math.ceil(allBlogPosts.length / PAGE_SIZE);
-
-const page = {
-	data: allBlogPosts.slice(0, PAGE_SIZE),
-	currentPage: 1,
-	lastPage: totalPages,
-	size: PAGE_SIZE,
-	total: allBlogPosts.length,
-	url: {
-		current: "/edit/",
-		next: totalPages > 1 ? "/edit/2" : undefined,
-		prev: undefined,
-	},
-};
+import { apiUrl, hasApiBaseUrl } from "@utils/api-client";
+import { url } from "@utils/url-utils";
 ---
 
-<MainGridLayout title="Edit" description="Edit">
-    <PostPage page={page}></PostPage>
+<MainGridLayout title="Draft Studio" description="Draft Studio">
+	<section class="flex flex-col gap-6">
+		<div class="card-base rounded-[var(--radius-large)] p-6 md:p-8">
+			<div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-[var(--primary)]">Draft Studio</h1>
+					<p class="mt-2 text-black/60 dark:text-white/60">
+						Upload Markdown as drafts, inspect the parsed content, and publish only when ready.
+					</p>
+				</div>
+				<div class="flex gap-3">
+					<button
+						id="refresh-drafts"
+						type="button"
+						class="btn-plain rounded-lg px-4 py-2 font-bold active:scale-95"
+					>
+						Refresh
+					</button>
+					<button
+						id="logout-admin"
+						type="button"
+						class="btn-plain rounded-lg px-4 py-2 font-bold active:scale-95"
+					>
+						Logout
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+			<div class="card-base rounded-[var(--radius-large)] p-6 md:p-8">
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<h2 class="text-2xl font-bold">Upload Markdown</h2>
+						<p class="mt-2 text-black/60 dark:text-white/60">
+							Accepted format: `.md` only. Every upload is stored under drafts first.
+						</p>
+					</div>
+					<input id="draft-file-input" type="file" accept=".md,.markdown,text/markdown" class="hidden" />
+					<button id="select-draft-file" type="button" class="btn-regular rounded-lg px-4 py-2 font-bold active:scale-95">
+						Choose File
+					</button>
+				</div>
+				<div class="mt-5 rounded-2xl border border-dashed border-black/10 bg-black/[0.02] p-5 dark:border-white/10 dark:bg-white/[0.03]">
+					<p id="selected-file-name" class="text-sm text-black/50 dark:text-white/50">No file selected.</p>
+					<textarea
+						id="draft-markdown-preview"
+						class="mt-4 h-80 w-full rounded-xl border border-black/10 bg-transparent p-4 font-mono text-sm outline-none focus:border-[var(--primary)] dark:border-white/10"
+						placeholder="Selected Markdown will appear here."
+					></textarea>
+					<div class="mt-4 flex items-center justify-between gap-4">
+						<p id="draft-upload-message" class="text-sm text-black/50 dark:text-white/50"></p>
+						<button id="upload-draft" type="button" class="btn-regular rounded-lg px-4 py-2 font-bold active:scale-95">
+							Save As Draft
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="card-base rounded-[var(--radius-large)] p-6 md:p-8">
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<h2 class="text-2xl font-bold">Draft Queue</h2>
+						<p class="mt-2 text-black/60 dark:text-white/60">
+							Review each draft before publishing to `src/content/posts`.
+						</p>
+					</div>
+					<span id="draft-count" class="rounded-full bg-black/5 px-3 py-1 text-sm dark:bg-white/10">0 drafts</span>
+				</div>
+				<div id="draft-list" class="mt-5 flex flex-col gap-4"></div>
+			</div>
+		</div>
+	</section>
 </MainGridLayout>
+
+<script is:inline define:vars={{
+	loginUrl: url("/login/"),
+	adminEnabled: hasApiBaseUrl(),
+	adminSessionUrl: apiUrl("/api/admin/session"),
+	adminDraftsUrl: apiUrl("/api/admin/drafts"),
+	adminLogoutUrl: apiUrl("/api/admin/logout"),
+	adminPublishUrl: apiUrl("/api/admin/publish"),
+}}>
+const draftFileInput = document.getElementById("draft-file-input");
+const selectDraftFileButton = document.getElementById("select-draft-file");
+const uploadDraftButton = document.getElementById("upload-draft");
+const refreshDraftsButton = document.getElementById("refresh-drafts");
+const logoutAdminButton = document.getElementById("logout-admin");
+const selectedFileName = document.getElementById("selected-file-name");
+const markdownPreview = document.getElementById("draft-markdown-preview");
+const uploadMessage = document.getElementById("draft-upload-message");
+const draftList = document.getElementById("draft-list");
+const draftCount = document.getElementById("draft-count");
+
+let selectedFile = null;
+
+async function ensureAuthenticated() {
+	if (!adminEnabled) {
+		setUploadMessage("PUBLIC_API_BASE_URL is not configured. Admin features are disabled.", true);
+		throw new Error("Admin API is not configured.");
+	}
+
+	const response = await fetch(adminSessionUrl, { credentials: "include" });
+	const payload = await response.json();
+	if (payload.authenticated !== true) {
+		window.location.href = loginUrl;
+		throw new Error("Unauthorized");
+	}
+}
+
+function escapeHtml(text) {
+	return text.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[char]));
+}
+
+function setUploadMessage(message, isError = false) {
+	if (!uploadMessage) return;
+	uploadMessage.textContent = message;
+	uploadMessage.classList.toggle("text-red-500", isError);
+	uploadMessage.classList.toggle("text-black/50", !isError);
+	uploadMessage.classList.toggle("dark:text-white/50", !isError);
+}
+
+function excerpt(text) {
+	return text.replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
+async function handleApiResponse(response) {
+	if (response.status === 401) {
+		window.location.href = loginUrl;
+		throw new Error("Unauthorized");
+	}
+
+	const payload = await response.json();
+	if (!response.ok) {
+		throw new Error(payload.message || "Request failed.");
+	}
+	return payload;
+}
+
+function renderDrafts(drafts) {
+	if (!draftList || !draftCount) return;
+
+	draftCount.textContent = `${drafts.length} draft${drafts.length === 1 ? "" : "s"}`;
+	if (!drafts.length) {
+		draftList.innerHTML = `<div class="rounded-2xl border border-dashed border-black/10 p-5 text-sm text-black/50 dark:border-white/10 dark:text-white/50">No drafts yet.</div>`;
+		return;
+	}
+
+	draftList.innerHTML = drafts
+		.map((draft) => `
+			<article class="rounded-2xl border border-black/8 p-5 dark:border-white/10">
+				<div class="flex flex-col gap-4">
+					<div>
+						<h3 class="text-xl font-bold">${escapeHtml(draft.title || draft.name)}</h3>
+						<p class="mt-2 text-sm text-black/50 dark:text-white/50">${escapeHtml(excerpt(draft.body) || "No body content yet.")}</p>
+					</div>
+					<div class="grid gap-2 text-sm text-black/60 dark:text-white/60">
+						<div><strong>File:</strong> ${escapeHtml(draft.name)}</div>
+						<div><strong>Published:</strong> ${escapeHtml(draft.published || "-")}</div>
+						<div><strong>Category:</strong> ${escapeHtml(draft.category || "-")}</div>
+						<div><strong>Tags:</strong> ${escapeHtml(draft.tags?.length ? draft.tags.join(", ") : "No tags")}</div>
+					</div>
+					<details class="rounded-xl bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+						<summary class="cursor-pointer font-bold">Preview Markdown</summary>
+						<pre class="mt-4 overflow-auto whitespace-pre-wrap break-words text-sm">${escapeHtml(draft.body)}</pre>
+					</details>
+					<div class="flex flex-wrap gap-3">
+						<button type="button" class="btn-regular rounded-lg px-4 py-2 font-bold active:scale-95" data-action="publish" data-path="${draft.path}">
+							Publish
+						</button>
+						<button type="button" class="btn-plain rounded-lg px-4 py-2 font-bold active:scale-95" data-action="delete" data-path="${draft.path}" data-sha="${draft.sha}">
+							Delete
+						</button>
+					</div>
+				</div>
+			</article>
+		`)
+		.join("");
+}
+
+async function loadDrafts() {
+	await ensureAuthenticated();
+	const payload = await handleApiResponse(await fetch(adminDraftsUrl, { credentials: "include" }));
+	renderDrafts(payload.drafts || []);
+}
+
+if (selectDraftFileButton && draftFileInput instanceof HTMLInputElement) {
+	selectDraftFileButton.addEventListener("click", () => draftFileInput.click());
+	draftFileInput.addEventListener("change", async () => {
+		const file = draftFileInput.files?.[0];
+		if (!file) return;
+		selectedFile = file;
+		if (selectedFileName) selectedFileName.textContent = file.name;
+		if (markdownPreview instanceof HTMLTextAreaElement) {
+			markdownPreview.value = await file.text();
+		}
+		setUploadMessage("");
+	});
+}
+
+if (uploadDraftButton) {
+	uploadDraftButton.addEventListener("click", async () => {
+		if (!(markdownPreview instanceof HTMLTextAreaElement)) return;
+		const markdown = markdownPreview.value.trim();
+		if (!markdown) {
+			setUploadMessage("Please select a Markdown file first.", true);
+			return;
+		}
+
+		try {
+			setUploadMessage("Saving draft...");
+			await handleApiResponse(
+				await fetch(adminDraftsUrl, {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						markdown,
+						fileName: selectedFile?.name,
+					}),
+				}),
+			);
+			setUploadMessage("Draft saved.");
+			selectedFile = null;
+			if (selectedFileName) selectedFileName.textContent = "No file selected.";
+			markdownPreview.value = "";
+			if (draftFileInput instanceof HTMLInputElement) {
+				draftFileInput.value = "";
+			}
+			await loadDrafts();
+		} catch (error) {
+			setUploadMessage(error instanceof Error ? error.message : "Failed to save draft.", true);
+		}
+	});
+}
+
+if (refreshDraftsButton) {
+	refreshDraftsButton.addEventListener("click", async () => {
+		await loadDrafts();
+	});
+}
+
+if (logoutAdminButton) {
+	logoutAdminButton.addEventListener("click", async () => {
+		await fetch(adminLogoutUrl, {
+			method: "POST",
+			credentials: "include",
+		});
+		window.location.href = loginUrl;
+	});
+}
+
+if (draftList) {
+	draftList.addEventListener("click", async (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return;
+
+		const button = target.closest("button[data-action]");
+		if (!(button instanceof HTMLButtonElement)) return;
+
+		const action = button.dataset.action;
+		const path = button.dataset.path;
+		if (!action || !path) return;
+
+		try {
+			if (action === "publish") {
+				button.disabled = true;
+				const payload = await handleApiResponse(
+					await fetch(adminPublishUrl, {
+						method: "POST",
+						credentials: "include",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ path }),
+					}),
+				);
+				alert(`Published to ${payload.published.postPath}`);
+			}
+
+			if (action === "delete") {
+				const confirmed = window.confirm("Delete this draft?");
+				if (!confirmed) return;
+				button.disabled = true;
+				await handleApiResponse(
+					await fetch(adminDraftsUrl, {
+						method: "DELETE",
+						credentials: "include",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							path,
+							sha: button.dataset.sha,
+						}),
+					}),
+				);
+			}
+
+			await loadDrafts();
+		} catch (error) {
+			alert(error instanceof Error ? error.message : "Action failed.");
+			button.disabled = false;
+		}
+	});
+}
+
+loadDrafts().catch((error) => {
+	setUploadMessage(error instanceof Error ? error.message : "Failed to load drafts.", true);
+});
+</script>

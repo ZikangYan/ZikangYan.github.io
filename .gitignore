@@ -25,6 +25,9 @@ pnpm-debug.log*
 package-lock.json
 bun.lockb
 yarn.lock
+backend/node_modules/
+backend/.env
+backend/package-lock.json
 
 # ide
 .idea

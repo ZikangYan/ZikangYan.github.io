@@ -3,6 +3,7 @@ import { Icon } from "astro-icon/components";
 import { navBarConfig, siteConfig } from "../config";
 import { LinkPresets } from "../constants/link-presets";
 import { LinkPreset, type NavBarLink } from "../types/config";
+import { apiUrl, hasApiBaseUrl } from "../utils/api-client";
 import { url } from "../utils/url-utils";
 import LightDarkSwitch from "./LightDarkSwitch.svelte";
 import Search from "./Search.svelte";
@@ -60,8 +61,17 @@ let links: NavBarLink[] = navBarConfig.links.map(
                 <LightDarkSwitch client:only="svelte"></LightDarkSwitch>
             </div>
 
-            <!-- Admin Tools (Upload, Logout) -->
+            <!-- Admin Tools (Check-In, Upload, Logout) -->
             <div id="navbar-admin-tools" class="hidden flex items-center">
+                <a
+                    aria-label="Check In"
+                    class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90"
+                    id="check-in-switch"
+                    href={url("/check-in/")}
+                    title="Check In"
+                >
+                    <Icon name="material-symbols:calendar-month-rounded" class="text-[1.25rem]"></Icon>
+                </a>
                 <button
                     aria-label="Upload Markdown"
                     class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90"
@@ -97,11 +107,26 @@ let links: NavBarLink[] = navBarConfig.links.map(
     </div>
 </div>
 
-<script is:inline define:vars={{ homeUrl: url("/"), editUrl: url("/edit/"), loginUrl: url("/login/") }}>
-function syncNavbarUI() {
-    const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" && sessionStorage.getItem("loginUser") === "yanzikang";
+<script is:inline define:vars={{ homeUrl: url("/"), editUrl: url("/edit/"), checkInUrl: url("/check-in/"), loginUrl: url("/login/"), adminSessionUrl: apiUrl("/api/admin/session"), adminLogoutUrl: apiUrl("/api/admin/logout"), adminEnabled: hasApiBaseUrl() }}>
+async function syncNavbarUI() {
+    if (!adminEnabled) {
+        const adminTools = document.getElementById("navbar-admin-tools");
+        const homeLink = document.getElementById("nav-home-link");
+        if (adminTools) adminTools.classList.add("hidden");
+        if (homeLink) homeLink.href = homeUrl;
+        return;
+    }
+    let isLoggedIn = false;
+    try {
+        const response = await fetch(adminSessionUrl, { credentials: "include" });
+        const payload = await response.json();
+        isLoggedIn = payload.authenticated === true;
+    } catch (_error) {
+        isLoggedIn = false;
+    }
     const currentPath = window.location.pathname.replace(/\/$/, "");
     const normalizedEditPath = editUrl.replace(/\/$/, "");
+    const normalizedCheckInPath = checkInUrl.replace(/\/$/, "");
     
     const adminTools = document.getElementById("navbar-admin-tools");
     const homeLink = document.getElementById("nav-home-link");
@@ -114,8 +139,8 @@ function syncNavbarUI() {
         homeLink.href = isLoggedIn ? editUrl : homeUrl;
     }
 
-    // 3. Auto-redirect if trying to access /edit without being logged in
-    if (currentPath === normalizedEditPath && !isLoggedIn) {
+    // 3. Auto-redirect if trying to access protected routes without being logged in
+    if ((currentPath === normalizedEditPath || currentPath === normalizedCheckInPath) && !isLoggedIn) {
         if (window.swup) window.swup.navigate(loginUrl);
         else window.location.href = loginUrl;
     }
@@ -151,9 +176,11 @@ function bindButtons() {
 
     const logoutBtn = document.getElementById("logout-switch");
     if (logoutBtn) {
-        logoutBtn.onclick = () => {
-            sessionStorage.removeItem("isLoggedIn");
-            sessionStorage.removeItem("loginUser");
+        logoutBtn.onclick = async () => {
+            await fetch(adminLogoutUrl, {
+                method: "POST",
+                credentials: "include",
+            });
             window.dispatchEvent(new Event("authchange"));
             window.location.href = homeUrl;
         };
